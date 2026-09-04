@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 
+from meshcore import serial_cx
 from meshcore.serial_cx import SerialConnection
 
 
@@ -11,6 +12,30 @@ class RecordingReader:
 
     async def handle_rx(self, data):
         self.frames.append(bytes(data))
+
+
+class FakeSerial:
+    def __init__(self):
+        self.dtr = True
+        self.rts = True
+
+
+class FakeTransport:
+    def __init__(self):
+        self.serial = FakeSerial()
+
+
+def test_connection_made_preserves_serial_control_lines(monkeypatch):
+    monkeypatch.setattr(serial_cx.serial_asyncio, "SerialTransport", FakeTransport)
+    conn = SerialConnection("/dev/null", 115200)
+    transport = FakeTransport()
+
+    conn.MCSerialClientProtocol(conn).connection_made(transport)
+
+    assert transport.serial.dtr is True
+    assert transport.serial.rts is True
+    assert conn.transport is transport
+    assert conn._connected_event.is_set()
 
 
 @pytest.mark.asyncio

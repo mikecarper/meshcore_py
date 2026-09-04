@@ -4,6 +4,7 @@ mccli.py : CLI interface to MeschCore BLE companion app
 
 import asyncio
 import logging
+
 import serial_asyncio_fast as serial_asyncio
 
 # Get logger
@@ -40,8 +41,11 @@ class SerialConnection:
         def connection_made(self, transport):
             self.cx.transport = transport
             logger.debug('port opened')
-            if isinstance(transport, serial_asyncio.SerialTransport) and transport.serial:
-                transport.serial.rts = False  # You can manipulate Serial object via transport
+            # Keep pyserial's configured DTR/RTS state. Some ESP32 boards use
+            # both modem-control lines in their automatic reset circuit. In
+            # particular, forcing RTS low here holds a SenseCAP Indicator
+            # behind a CH340 bridge out of its running application and makes a
+            # healthy Companion interface look unresponsive.
             self.cx._connected_event.set()
 
         def data_received(self, data):
